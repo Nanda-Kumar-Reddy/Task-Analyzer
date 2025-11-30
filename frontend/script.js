@@ -1,4 +1,5 @@
 let formTasks = [];
+let dependencyMap = {};
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("modeJson").addEventListener("change", toggleInputMode);
@@ -18,15 +19,14 @@ async function analyzeTasks() {
     let tasks = [];
 
     if (mode === "json") {
-        const input = document.getElementById("taskInput").value.trim();
         try {
-            tasks = JSON.parse(input);
+            tasks = JSON.parse(document.getElementById("taskInput").value.trim());
             if (!Array.isArray(tasks)) return alert("Input must be a JSON array.");
-        } catch (e) {
+        } catch {
             return alert("Invalid JSON format.");
         }
     } else {
-        if (formTasks.length === 0) return alert("No form tasks added.");
+        if (!formTasks.length) return alert("No form tasks added.");
         tasks = formTasks.map(t => ({
             id: t.temp_id,
             title: t.title,
@@ -37,21 +37,19 @@ async function analyzeTasks() {
         }));
     }
 
-    let responseData;
-
+    let result;
     try {
-        const response = await fetch("http://127.0.0.1:8000/api/tasks/analyze/", {
+        const resp = await fetch("http://127.0.0.1:8000/api/tasks/analyze/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ strategy, tasks })
         });
-        responseData = await response.json();
-    } catch (error) {
-        alert("Backend not reachable, using fallback scoring.");
-        responseData = { tasks: mockAnalyze(tasks, strategy) };
+        result = await resp.json();
+    } catch {
+        result = { tasks: mockAnalyze(tasks, strategy) };
     }
 
-    displayResults(responseData.tasks ?? []);
+    displayResults(result.tasks ?? []);
 }
 
 async function saveTasks() {
@@ -59,14 +57,13 @@ async function saveTasks() {
     let tasks = [];
 
     if (mode === "json") {
-        const input = document.getElementById("taskInput").value.trim();
         try {
-            tasks = JSON.parse(input);
-        } catch (e) {
+            tasks = JSON.parse(document.getElementById("taskInput").value.trim());
+        } catch {
             return alert("Invalid JSON format.");
         }
     } else {
-        if (formTasks.length === 0) return alert("No form tasks added.");
+        if (!formTasks.length) return alert("No form tasks added.");
         tasks = formTasks.map(t => ({
             title: t.title,
             due_date: t.due_date,
@@ -86,21 +83,20 @@ async function saveTasks() {
         alert("Tasks saved!");
         formTasks = [];
         renderFormTasks();
+        resetFormInputs();
         fetchStoredTasks();
-    } else {
-        alert("Failed to save tasks.");
     }
 }
 
 async function saveAndAnalyze() {
-    const mode = document.querySelector('input[name="inputMode"]:checked').value;
     const strategy = document.getElementById("strategy").value;
+    const mode = document.querySelector('input[name="inputMode"]:checked').value;
     let tasks = [];
 
     if (mode === "json") {
         try {
             tasks = JSON.parse(document.getElementById("taskInput").value.trim());
-        } catch (e) {
+        } catch {
             return alert("Invalid JSON format.");
         }
     } else {
@@ -127,25 +123,31 @@ async function saveAndAnalyze() {
 
     const data = await resp.json();
     displayResults(data.tasks ?? []);
+
+    formTasks = [];
+    renderFormTasks();
+    resetFormInputs();
     fetchStoredTasks();
 }
 
 async function fetchStoredTasks() {
+    const allTasksResp = await fetch("http://127.0.0.1:8000/api/tasks/all/");
+    const allTasks = await allTasksResp.json();
+    buildDependencyMap(allTasks);
+    populateDependencies(allTasks);
+
     const mode = document.getElementById("taskToggle").value;
-    const url = mode === "today"
-        ? "http://127.0.0.1:8000/api/tasks/today/"
-        : "http://127.0.0.1:8000/api/tasks/all/";
+    const url = mode === "today" ?
+        "http://127.0.0.1:8000/api/tasks/today/" :
+        "http://127.0.0.1:8000/api/tasks/all/";
 
     const resp = await fetch(url);
-    const data = await resp.json();
-
-    displayDBResults(data);
-    populateDependencies(data);
+    displayDBResults(await resp.json());
 }
 
-async function deleteTask(id) {
-    await fetch(`http://127.0.0.1:8000/api/tasks/delete/${id}/`, { method: "DELETE" });
-    fetchStoredTasks();
+function deleteTask(id) {
+    fetch(`http://127.0.0.1:8000/api/tasks/delete/${id}/`, { method: "DELETE" })
+        .then(fetchStoredTasks);
 }
 
 function displayResults(tasks) {
@@ -173,70 +175,105 @@ function displayResults(tasks) {
 
         const details = document.createElement("div");
         details.classList.add("task-details");
-
         const subs = task.score_details?.subscores || {};
 
         details.innerHTML = `
-            <strong>Score:</strong> ${score.toFixed(1)}<br>
-            <strong>Reason:</strong> ${task.score_explanation || "N/A"}<br><br>
-            <strong>Urgency:</strong> ${subs.urgency ?? "N/A"}<br>
-            <strong>Importance:</strong> ${subs.importance ?? "N/A"}<br>
-            <strong>Effort:</strong> ${subs.effort ?? "N/A"}<br>
-            <strong>Dependency:</strong> ${subs.dependency ?? "N/A"}<br>
-            ${task.warnings && task.warnings.length
-                ? `<br><span style='color:red'>⚠ ${task.warnings.join(", ")}</span>`
-                : ""
-            }
+    <strong>Score:</strong> ${score.toFixed(1)}<br>
+    <strong>Due Date:</strong> ${task.due_date ?? "N/A"}<br>
+    <strong>Reason:</strong> ${task.score_explanation || "N/A"}<br><br>
+    <strong>Urgency:</strong> ${subs.urgency ?? "N/A"}<br>
+    <strong>Importance:</strong> ${subs.importance ?? "N/A"}<br>
+    <strong>Effort:</strong> ${subs.effort ?? "N/A"}<br>
+    <strong>Dependency:</strong> ${subs.dependency ?? "N/A"}
+    <br>
+    ${task.warnings && task.warnings.length
+        ? `<br><span style='color:red;'>⚠ ${task.warnings.join(", ")}</span>`
+        : ""
+    }
+`;
+
+
+        const reasonBtn = document.createElement("button");
+        reasonBtn.classList.add("reason-toggle-btn");
+        reasonBtn.textContent = "View Detailed Reasoning";
+
+        const reasonBox = document.createElement("div");
+        reasonBox.classList.add("reason-box");
+        reasonBox.style.display = "none";
+
+        const r = task.reason || {};
+        reasonBox.innerHTML = `
+            <div class="reason-row"><strong>Summary:</strong> ${r.summary ?? "N/A"}</div>
+            <div class="reason-row"><strong>Urgency:</strong> ${r.urgency_reason ?? "N/A"}</div>
+            <div class="reason-row"><strong>Importance:</strong> ${r.importance_reason ?? "N/A"}</div>
+            <div class="reason-row"><strong>Effort:</strong> ${r.effort_reason ?? "N/A"}</div>
+            <div class="reason-row"><strong>Dependencies:</strong> ${r.dependency_reason ?? "N/A"}</div>
+            <div class="reason-row"><strong>Final Priority:</strong> ${r.final_priority_reason ?? "N/A"}</div>
         `;
+
+        reasonBtn.onclick = () => {
+            reasonBox.style.display = reasonBox.style.display === "none" ? "block" : "none";
+        };
 
         card.appendChild(title);
         card.appendChild(details);
+        card.appendChild(reasonBtn);
+        card.appendChild(reasonBox);
+
         results.appendChild(card);
     });
 }
+
 
 function displayDBResults(tasks) {
     const container = document.getElementById("dbResults");
     container.innerHTML = "";
 
-    if (!tasks || tasks.length === 0) {
+    if (!tasks.length) {
         container.innerHTML = "<p>No stored tasks.</p>";
         return;
     }
 
     tasks.forEach(task => {
+        const depNames = (task.dependencies || [])
+            .map(id => dependencyMap[id] || `Task ${id}`)
+            .join(", ") || "None";
+
         const card = document.createElement("div");
         card.classList.add("db-card");
-
         card.innerHTML = `
             <div class="db-title">${task.title}</div>
             <div class="db-details">
                 Due: ${task.due_date || "N/A"}<br>
                 Importance: ${task.importance}<br>
-                Hours: ${task.estimated_hours}
+                Hours: ${task.estimated_hours}<br>
+                <strong>Depends on:</strong> ${depNames}
             </div>
         `;
 
-        const delBtn = document.createElement("button");
-        delBtn.classList.add("delete-btn");
-        delBtn.textContent = "Delete";
-        delBtn.onclick = () => deleteTask(task.id);
+        const del = document.createElement("button");
+        del.classList.add("delete-btn");
+        del.textContent = "Delete";
+        del.onclick = () => deleteTask(task.id);
 
-        card.appendChild(delBtn);
+        card.appendChild(del);
         container.appendChild(card);
     });
 }
 
-function populateDependencies(tasks) {
-    const sel = document.getElementById("formDependencies");
-    if (!sel) return;
+function buildDependencyMap(allTasks) {
+    dependencyMap = {};
+    allTasks.forEach(t => dependencyMap[t.id] = t.title);
+}
 
-    sel.innerHTML = "";
+function populateDependencies(tasks) {
+    const select = document.getElementById("formDependencies");
+    select.innerHTML = "";
     tasks.forEach(t => {
         const opt = document.createElement("option");
         opt.value = t.id;
         opt.textContent = `${t.title} (id:${t.id})`;
-        sel.appendChild(opt);
+        select.appendChild(opt);
     });
 }
 
@@ -253,22 +290,23 @@ function addFormTask() {
 
     const temp_id = Date.now();
     formTasks.push({ temp_id, title, due_date, estimated_hours, importance, dependencies });
+
     renderFormTasks();
+    resetFormInputs();
 }
 
 function renderFormTasks() {
-    const container = document.getElementById("formTasksList");
-    container.innerHTML = "";
+    const div = document.getElementById("formTasksList");
+    div.innerHTML = "";
 
-    if (formTasks.length === 0) {
-        container.innerHTML = "<p>No tasks added.</p>";
+    if (!formTasks.length) {
+        div.innerHTML = "<p>No tasks added.</p>";
         return;
     }
 
     formTasks.forEach(t => {
         const card = document.createElement("div");
         card.classList.add("form-task-card");
-
         card.innerHTML = `
             <div class="form-task-info">
                 ${t.title}<br>
@@ -284,11 +322,19 @@ function renderFormTasks() {
         };
 
         card.appendChild(del);
-        container.appendChild(card);
+        div.appendChild(card);
     });
 }
 
-function mockAnalyze(tasks, strategy) {
+function resetFormInputs() {
+    document.getElementById("formTitle").value = "";
+    document.getElementById("formDueDate").value = "";
+    document.getElementById("formHours").value = "1";
+    document.getElementById("formImportance").value = "5";
+    document.getElementById("formDependencies").selectedIndex = -1;
+}
+
+function mockAnalyze(tasks) {
     return tasks.map(t => ({
         ...t,
         priority_score: (t.importance || 5) * 10,
