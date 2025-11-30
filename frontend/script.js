@@ -251,7 +251,15 @@ function addFormTask() {
 
     if (!title) return alert("Title is required.");
 
-    
+    if (!due_date) {
+        alert("Due date is required.");
+        return;
+    }
+
+    if (importance < 1 || importance > 10) {
+        alert("Importance must be between 1 and 10.");
+        return;
+    }
     const temp_id = Date.now() + Math.floor(Math.random() * 1000);
     const task = { temp_id, title, due_date, estimated_hours, importance, dependencies };
     formTasks.push(task);
