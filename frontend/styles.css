@@ -334,3 +334,27 @@ header h1 {
 .form-delete-btn:hover {
     background: #b52a37;
 }
+
+.results-panel {
+    height: calc(80vh - 150px);
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+#results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#dbResults {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+#formTasksList {
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
