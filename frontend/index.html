@@ -16,9 +16,16 @@
     <main class="container">
 
         <section class="input-panel">
-            <h2>Enter Tasks (JSON Format)</h2>
+            <h2>Enter Tasks</h2>
 
-            <textarea id="taskInput" placeholder='[
+            <div class="input-mode">
+                <label><input type="radio" name="inputMode" value="json" id="modeJson" checked> JSON Prompt</label>
+                <label><input type="radio" name="inputMode" value="form" id="modeForm"> Form Input</label>
+            </div>
+
+            <div id="jsonSection">
+                <h3>JSON Prompt</h3>
+                <textarea id="taskInput" placeholder='[
     {
         "id": 1,
         "title": "Finish report",
@@ -28,6 +35,42 @@
         "dependencies": [2]
     }
 ]' spellcheck="false"></textarea>
+            </div>
+
+            <div id="formSection" style="display:none;">
+                <h3>Form Input</h3>
+
+                <div class="form-row">
+                    <label>Title</label>
+                    <input type="text" id="formTitle" />
+                </div>
+
+                <div class="form-row">
+                    <label>Due Date</label>
+                    <input type="date" id="formDueDate" />
+                </div>
+
+                <div class="form-row">
+                    <label>Estimated Hours</label>
+                    <input type="number" id="formHours" min="1" value="1" />
+                </div>
+
+                <div class="form-row">
+                    <label>Importance (1-10)</label>
+                    <input type="number" id="formImportance" min="1" max="10" value="5" />
+                </div>
+
+                <div class="form-row">
+                    <label>Dependencies</label>
+                    <select id="formDependencies" multiple size="4"></select>
+                </div>
+
+                <div class="form-actions">
+                    <button id="addFormTaskBtn" onclick="addFormTask()">Add Task</button>
+                </div>
+
+                <div id="formTasksList"></div>
+            </div>
 
             <label for="strategy">Choose Strategy:</label>
             <select id="strategy">
