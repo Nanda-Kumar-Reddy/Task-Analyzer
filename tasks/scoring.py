@@ -31,6 +31,48 @@ def is_working_day(d: date) -> bool:
         return False
     return True
 
+def build_reason_summary(task, U, u_text, I, i_text, E, e_text, D, d_text, final_score):
+    summary = ""
+    if final_score >= 80:
+        summary = "This task is a high priority item due to strong urgency and importance factors."
+    elif final_score >= 50:
+        summary = "This task has moderate priority, with balanced contributions from urgency, importance, and effort."
+    else:
+        summary = "This task currently has low priority due to limited urgency or high blocking factors."
+
+    urgency_reason = ""
+    if "overdue" in u_text.lower():
+        urgency_reason = f"Urgency: The task is overdue — {u_text}."
+    elif "today" in u_text.lower() or "tomorrow" in u_text.lower():
+        urgency_reason = f"Urgency: Immediate deadline — {u_text}."
+    else:
+        urgency_reason = f"Urgency: {u_text}."
+
+    importance_reason = f"Importance: {i_text}."
+
+    effort_reason = f"Effort: {e_text}."
+
+    if D < 0:
+        dependency_reason = f"Dependencies: This task is blocked by other tasks, reducing its immediate priority ({d_text})."
+    elif D > 0:
+        dependency_reason = f"Dependencies: This task influences other tasks ({d_text})."
+    else:
+        dependency_reason = "Dependencies: No dependency impact."
+
+    final_reason = (
+        "The final priority score is determined by combining urgency, importance, effort, and dependency influences."
+    )
+
+    return {
+        "summary": summary,
+        "urgency_reason": urgency_reason,
+        "importance_reason": importance_reason,
+        "effort_reason": effort_reason,
+        "dependency_reason": dependency_reason,
+        "final_priority_reason": final_reason
+    }
+
+
 def count_working_days(start_date: date, end_date: date) -> int:
     if start_date == end_date:
         return 0
@@ -267,7 +309,17 @@ def calculate_task_priority(task: Dict, task_id, dependency_graph: Optional[Depe
             elif factor == "dependency" and D != 0:
                 explanation_parts.append(d_text)
     explanation = " • ".join(explanation_parts) if explanation_parts else "Standard priority"
-    return {"score": round(final_score, 2), "explanation": explanation, "subscores": subscores, "contributions": contributions, "strategy": params["name"]}
+
+    reason = build_reason_summary(
+        task,
+        U, u_text,
+        I, i_text,
+        E, e_text,
+        D, d_text,
+        final_score
+    )
+    return {"score": round(final_score, 2), "explanation": explanation, "subscores": subscores, "contributions": contributions, "strategy": params["name"],"strategy": params["name"],
+        "reason": reason}
 
 def analyze_tasks_batch(tasks: List[Dict], strategy: str = "smart") -> List[Dict]:
     for i, t in enumerate(tasks):
@@ -285,6 +337,6 @@ def analyze_tasks_batch(tasks: List[Dict], strategy: str = "smart") -> List[Dict
         warnings = []
         if dep_graph.has_cycle(tid):
             warnings.append("Circular dependency detected")
-        results.append({**t, "priority_score": score_data["score"], "score_explanation": score_data["explanation"], "score_details": score_data, "warnings": warnings})
+        results.append({**t, "priority_score": score_data["score"], "score_explanation": score_data["explanation"], "score_details": score_data, "reason": score_data["reason"],"warnings": warnings})
     results.sort(key=lambda x: x["priority_score"], reverse=True)
     return results
