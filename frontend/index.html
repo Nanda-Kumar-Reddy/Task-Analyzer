@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Smart Task Analyzer</title>
-
     <link rel="stylesheet" href="/static/styles.css" />
 </head>
 
@@ -38,7 +37,21 @@
                 <option value="impact">High Impact</option>
             </select>
 
-            <button id="analyzeBtn" onclick="analyzeTasks()">Analyze</button>
+            <div class="button-group">
+                <button id="saveBtn" onclick="saveTasks()">Save</button>
+                <button id="analyzeBtn" onclick="analyzeTasks()">Analyze</button>
+                <button id="saveAnalyzeBtn" onclick="saveAndAnalyze()">Save & Analyze</button>
+            </div>
+
+            <div class="toggle-section">
+                <h3>Stored Tasks</h3>
+                <select id="taskToggle" onchange="fetchStoredTasks()">
+                    <option value="all">All Tasks</option>
+                    <option value="today">Top 3 Tasks for Today</option>
+                </select>
+            </div>
+
+            <div id="dbResults"></div>
         </section>
 
         <section class="results-panel">
