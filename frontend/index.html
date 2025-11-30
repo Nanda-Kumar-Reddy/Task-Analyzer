@@ -25,15 +25,15 @@
 
             <div id="jsonSection">
                 <h3>JSON Prompt</h3>
-                <textarea id="taskInput" placeholder='[
-    {
-        "id": 1,
-        "title": "Finish report",
-        "due_date": "2025-12-01",
-        "estimated_hours": 3,
-        "importance": 8,
-        "dependencies": [2]
-    }
+                <textarea id="taskInput" placeholder='[ 
+    { 
+        "id": 1, 
+        "title": "Finish report", 
+        "due_date": "2025-12-01", 
+        "estimated_hours": 3, 
+        "importance": 8, 
+        "dependencies": [2] 
+    } 
 ]' spellcheck="false"></textarea>
             </div>
 
@@ -91,7 +91,6 @@
                 <select id="taskToggle" onchange="fetchStoredTasks()">
                     <option value="today">Top 3 Tasks for Today</option>
                     <option value="all">All Tasks</option>
-                    
                 </select>
             </div>
 
