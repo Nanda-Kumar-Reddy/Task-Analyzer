@@ -1,118 +1,85 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-
-from .serializers import StrategySerializer, TaskOutputSerializer
-from .scoring import calculate_task_score
-
+import json
+from datetime import date
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from .models import Task
-from .serializers import TaskModelSerializer
+from .serializers import TaskSerializer
+from .scoring import analyze_tasks_batch, STRATEGY_PRESETS
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def analyze_tasks(request):
+    try:
+        data = json.loads(request.body)
+        tasks = data.get("tasks", [])
+        strategy = data.get("strategy", "smart")
+        if strategy not in STRATEGY_PRESETS:
+            return JsonResponse({"error": "Invalid strategy"}, status=400)
+        results = analyze_tasks_batch(tasks, strategy)
+        return JsonResponse({"success": True, "strategy": STRATEGY_PRESETS[strategy]["name"], "tasks": results}, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
-class AnalyzeTasksView(APIView):
-    def post(self, request):
-        serializer = StrategySerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        strategy = serializer.validated_data["strategy"]
-        tasks = serializer.validated_data["tasks"]
-
-        results = []
-        for task in tasks:
-            score_data = calculate_task_score(task, strategy=strategy)
-            results.append({
-                **task,
-                "score": score_data["score"],
-                "explanation": score_data["explanation"]
+@csrf_exempt
+@require_http_methods(["POST"])
+def suggest_top_tasks(request):
+    try:
+        data = json.loads(request.body)
+        tasks = data.get("tasks", [])
+        strategy = data.get("strategy", "smart")
+        results = analyze_tasks_batch(tasks, strategy)
+        top3 = results[:3]
+        formatted = []
+        for t in top3:
+            formatted.append({
+                "rank": len(formatted) + 1,
+                "id": t.get("id"),
+                "title": t.get("title"),
+                "score": t.get("priority_score"),
+                "explanation": t.get("score_explanation"),
+                "subscores": t.get("score_details", {}).get("subscores", {}),
+                "strategy": t.get("score_details", {}).get("strategy", "")
             })
+        return JsonResponse(formatted, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
-        results.sort(key=lambda x: (x["score"], x["importance"]), reverse=True)
-
-        output = TaskOutputSerializer(results, many=True)
-        return Response(output.data, status=status.HTTP_200_OK)
-
-
-class SuggestTasksView(APIView):
-    def post(self, request):
-        serializer = StrategySerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        strategy = serializer.validated_data["strategy"]
-        tasks = serializer.validated_data["tasks"]
-
-        results = []
-        for task in tasks:
-            score_data = calculate_task_score(task, strategy=strategy)
-            results.append({
-                **task,
-                "score": score_data["score"],
-                "explanation": score_data["explanation"]
-            })
-
-        results.sort(key=lambda x: (x["score"], x["importance"]), reverse=True)
-
-        top_three = results[:3]
-        output = TaskOutputSerializer(top_three, many=True)
-        return Response(output.data, status=status.HTTP_200_OK)
-
-
-
-class SaveTasksView(APIView):
-    def post(self, request):
-        tasks = request.data.get("tasks", [])
+@csrf_exempt
+@require_http_methods(["POST"])
+def save_tasks(request):
+    try:
+        data = json.loads(request.body)
+        tasks = data.get("tasks", [])
         saved = []
-
         for t in tasks:
-            obj = Task.objects.create(
-                title=t.get("title"),
-                due_date=t.get("due_date"),
-                importance=t.get("importance", 5),
-                estimated_hours=t.get("estimated_hours", 1),
-                dependencies=t.get("dependencies", [])
-            )
-            saved.append(obj)
+            serializer = TaskSerializer(data=t)
+            if serializer.is_valid():
+                obj = serializer.save()
+                saved.append(TaskSerializer(obj).data)
+        return JsonResponse(saved, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
-        serializer = TaskModelSerializer(saved, many=True)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+@require_http_methods(["GET"])
+def get_all_tasks(request):
+    qs = Task.objects.all().order_by("id")
+    ser = TaskSerializer(qs, many=True)
+    return JsonResponse(ser.data, safe=False)
 
+@require_http_methods(["GET"])
+def get_today_top_tasks(request):
+    qs = Task.objects.all()
+    ser = TaskSerializer(qs, many=True)
+    tasks = ser.data
+    results = analyze_tasks_batch(tasks, "smart")
+    return JsonResponse(results[:3], safe=False)
 
-class AllTasksView(APIView):
-    def get(self, request):
-        tasks = Task.objects.all().order_by("id")
-        serializer = TaskModelSerializer(tasks, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class TodayTasksView(APIView):
-    def get(self, request):
-        tasks = Task.objects.all()
-        scored = []
-
-        for task in tasks:
-            data = {
-                "title": task.title,
-                "due_date": str(task.due_date),
-                "importance": task.importance,
-                "estimated_hours": task.estimated_hours,
-                "dependencies": task.dependencies,
-            }
-            score_data = calculate_task_score(data)
-            scored.append((task, score_data["score"]))
-
-        scored.sort(key=lambda x: x[1], reverse=True)
-        top_three = [x[0] for x in scored[:3]]
-
-        serializer = TaskModelSerializer(top_three, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class DeleteTaskView(APIView):
-    def delete(self, request, id):
-        try:
-            task = Task.objects.get(id=id)
-            task.delete()
-            return Response({"message": "Deleted"}, status=status.HTTP_200_OK)
-        except Task.DoesNotExist:
-            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_task(request, task_id):
+    try:
+        Task.objects.filter(id=task_id).delete()
+        return JsonResponse({"success": True})
+    except:
+        return JsonResponse({"success": False}, status=400)
