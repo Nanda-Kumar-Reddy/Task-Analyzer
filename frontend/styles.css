@@ -143,3 +143,102 @@ header h1 {
         width: 100%;
     }
 }
+
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+#saveBtn,
+#analyzeBtn,
+#saveAnalyzeBtn {
+    flex: 1;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#saveBtn {
+    background: #28a745;
+    color: white;
+}
+
+#saveBtn:hover {
+    background: #1e7e34;
+}
+
+#saveAnalyzeBtn {
+    background: #6f42c1;
+    color: white;
+}
+
+#saveAnalyzeBtn:hover {
+    background: #59359a;
+}
+
+.toggle-section {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+}
+
+.toggle-section h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+#taskToggle {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #aaa;
+    margin-bottom: 15px;
+}
+
+#dbResults {
+    margin-top: 10px;
+}
+
+.db-card {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    background: #fff;
+    border-left: 6px solid #007bff;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
+}
+
+.db-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.db-details {
+    font-size: 14px;
+    color: #444;
+    margin-top: 5px;
+}
+
+.delete-btn {
+    margin-top: 10px;
+    background: #dc3545;
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.delete-btn:hover {
+    background: #b52a37;
+}
