@@ -38,18 +38,20 @@ async function analyzeTasks() {
     }
 
     let responseData;
+
     try {
         const response = await fetch("http://127.0.0.1:8000/api/tasks/analyze/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ strategy: strategy, tasks: tasks })
+            body: JSON.stringify({ strategy, tasks })
         });
         responseData = await response.json();
     } catch (error) {
-        responseData = mockAnalyze(tasks, strategy);
+        alert("Backend not reachable, using fallback scoring.");
+        responseData = { tasks: mockAnalyze(tasks, strategy) };
     }
 
-    displayResults(responseData);
+    displayResults(responseData.tasks ?? []);
 }
 
 async function saveTasks() {
@@ -60,7 +62,6 @@ async function saveTasks() {
         const input = document.getElementById("taskInput").value.trim();
         try {
             tasks = JSON.parse(input);
-            if (!Array.isArray(tasks)) return alert("Input must be a JSON array.");
         } catch (e) {
             return alert("Invalid JSON format.");
         }
@@ -75,14 +76,14 @@ async function saveTasks() {
         }));
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/tasks/save/", {
+    const resp = await fetch("http://127.0.0.1:8000/api/tasks/save/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasks: tasks })
+        body: JSON.stringify({ tasks })
     });
 
-    if (response.ok) {
-        alert("Tasks saved successfully.");
+    if (resp.ok) {
+        alert("Tasks saved!");
         formTasks = [];
         renderFormTasks();
         fetchStoredTasks();
@@ -97,15 +98,12 @@ async function saveAndAnalyze() {
     let tasks = [];
 
     if (mode === "json") {
-        const input = document.getElementById("taskInput").value.trim();
         try {
-            tasks = JSON.parse(input);
-            if (!Array.isArray(tasks)) return alert("Input must be a JSON array.");
+            tasks = JSON.parse(document.getElementById("taskInput").value.trim());
         } catch (e) {
             return alert("Invalid JSON format.");
         }
     } else {
-        if (formTasks.length === 0) return alert("No form tasks added.");
         tasks = formTasks.map(t => ({
             title: t.title,
             due_date: t.due_date,
@@ -118,24 +116,18 @@ async function saveAndAnalyze() {
     await fetch("http://127.0.0.1:8000/api/tasks/save/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasks: tasks })
+        body: JSON.stringify({ tasks })
     });
 
-    const response = await fetch("http://127.0.0.1:8000/api/tasks/analyze/", {
+    const resp = await fetch("http://127.0.0.1:8000/api/tasks/analyze/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ strategy: strategy, tasks: tasks })
+        body: JSON.stringify({ strategy, tasks })
     });
 
-    if (response.ok) {
-        const data = await response.json();
-        displayResults(data);
-        formTasks = [];
-        renderFormTasks();
-        fetchStoredTasks();
-    } else {
-        alert("Analysis failed.");
-    }
+    const data = await resp.json();
+    displayResults(data.tasks ?? []);
+    fetchStoredTasks();
 }
 
 async function fetchStoredTasks() {
@@ -144,34 +136,35 @@ async function fetchStoredTasks() {
         ? "http://127.0.0.1:8000/api/tasks/today/"
         : "http://127.0.0.1:8000/api/tasks/all/";
 
-    const response = await fetch(url);
-    const data = await response.json();
+    const resp = await fetch(url);
+    const data = await resp.json();
+
     displayDBResults(data);
     populateDependencies(data);
 }
 
 async function deleteTask(id) {
-    await fetch(`http://127.0.0.1:8000/api/tasks/delete/${id}/`, {
-        method: "DELETE"
-    });
+    await fetch(`http://127.0.0.1:8000/api/tasks/delete/${id}/`, { method: "DELETE" });
     fetchStoredTasks();
 }
 
-function displayResults(sortedTasks) {
+function displayResults(tasks) {
     const results = document.getElementById("results");
     results.innerHTML = "";
 
-    if (!sortedTasks || sortedTasks.length === 0) {
+    if (!tasks || tasks.length === 0) {
         results.innerHTML = "<p>No tasks to display.</p>";
         return;
     }
 
-    sortedTasks.forEach(task => {
+    tasks.forEach(task => {
         const card = document.createElement("div");
         card.classList.add("task-card");
 
-        if (task.score >= 80) card.classList.add("priority-high");
-        else if (task.score >= 50) card.classList.add("priority-medium");
+        const score = task.priority_score ?? task.score ?? 0;
+
+        if (score >= 80) card.classList.add("priority-high");
+        else if (score >= 50) card.classList.add("priority-medium");
         else card.classList.add("priority-low");
 
         const title = document.createElement("div");
@@ -180,12 +173,21 @@ function displayResults(sortedTasks) {
 
         const details = document.createElement("div");
         details.classList.add("task-details");
-        details.innerHTML =
-            "Score: " + task.score +
-            "<br>Due: " + (task.due_date || "N/A") +
-            "<br>Importance: " + task.importance +
-            "<br>Hours: " + task.estimated_hours +
-            "<br>Explanation: " + (task.explanation || "N/A");
+
+        const subs = task.score_details?.subscores || {};
+
+        details.innerHTML = `
+            <strong>Score:</strong> ${score.toFixed(1)}<br>
+            <strong>Reason:</strong> ${task.score_explanation || "N/A"}<br><br>
+            <strong>Urgency:</strong> ${subs.urgency ?? "N/A"}<br>
+            <strong>Importance:</strong> ${subs.importance ?? "N/A"}<br>
+            <strong>Effort:</strong> ${subs.effort ?? "N/A"}<br>
+            <strong>Dependency:</strong> ${subs.dependency ?? "N/A"}<br>
+            ${task.warnings && task.warnings.length
+                ? `<br><span style='color:red'>⚠ ${task.warnings.join(", ")}</span>`
+                : ""
+            }
+        `;
 
         card.appendChild(title);
         card.appendChild(details);
@@ -206,24 +208,20 @@ function displayDBResults(tasks) {
         const card = document.createElement("div");
         card.classList.add("db-card");
 
-        const title = document.createElement("div");
-        title.classList.add("db-title");
-        title.textContent = task.title;
-
-        const details = document.createElement("div");
-        details.classList.add("db-details");
-        details.innerHTML =
-            "Due: " + (task.due_date || "N/A") +
-            "<br>Importance: " + task.importance +
-            "<br>Hours: " + task.estimated_hours;
+        card.innerHTML = `
+            <div class="db-title">${task.title}</div>
+            <div class="db-details">
+                Due: ${task.due_date || "N/A"}<br>
+                Importance: ${task.importance}<br>
+                Hours: ${task.estimated_hours}
+            </div>
+        `;
 
         const delBtn = document.createElement("button");
         delBtn.classList.add("delete-btn");
         delBtn.textContent = "Delete";
         delBtn.onclick = () => deleteTask(task.id);
 
-        card.appendChild(title);
-        card.appendChild(details);
         card.appendChild(delBtn);
         container.appendChild(card);
     });
@@ -232,6 +230,7 @@ function displayDBResults(tasks) {
 function populateDependencies(tasks) {
     const sel = document.getElementById("formDependencies");
     if (!sel) return;
+
     sel.innerHTML = "";
     tasks.forEach(t => {
         const opt = document.createElement("option");
@@ -243,38 +242,24 @@ function populateDependencies(tasks) {
 
 function addFormTask() {
     const title = document.getElementById("formTitle").value.trim();
-    const due_date = document.getElementById("formDueDate").value || null;
-    const estimated_hours = parseInt(document.getElementById("formHours").value) || 1;
-    const importance = parseInt(document.getElementById("formImportance").value) || 5;
-    const depsSel = document.getElementById("formDependencies");
-    const dependencies = Array.from(depsSel.selectedOptions).map(o => parseInt(o.value));
+    const due_date = document.getElementById("formDueDate").value;
+    const estimated_hours = parseInt(document.getElementById("formHours").value);
+    const importance = parseInt(document.getElementById("formImportance").value);
+    const dependencies = Array.from(document.getElementById("formDependencies").selectedOptions)
+        .map(o => parseInt(o.value));
 
     if (!title) return alert("Title is required.");
+    if (!due_date) return alert("Due date required.");
 
-    if (!due_date) {
-        alert("Due date is required.");
-        return;
-    }
-
-    if (importance < 1 || importance > 10) {
-        alert("Importance must be between 1 and 10.");
-        return;
-    }
-    const temp_id = Date.now() + Math.floor(Math.random() * 1000);
-    const task = { temp_id, title, due_date, estimated_hours, importance, dependencies };
-    formTasks.push(task);
+    const temp_id = Date.now();
+    formTasks.push({ temp_id, title, due_date, estimated_hours, importance, dependencies });
     renderFormTasks();
-
-    document.getElementById("formTitle").value = "";
-    document.getElementById("formDueDate").value = "";
-    document.getElementById("formHours").value = "1";
-    document.getElementById("formImportance").value = "5";
-    depsSel.selectedIndex = -1;
 }
 
 function renderFormTasks() {
     const container = document.getElementById("formTasksList");
     container.innerHTML = "";
+
     if (formTasks.length === 0) {
         container.innerHTML = "<p>No tasks added.</p>";
         return;
@@ -284,42 +269,29 @@ function renderFormTasks() {
         const card = document.createElement("div");
         card.classList.add("form-task-card");
 
-        const info = document.createElement("div");
-        info.classList.add("form-task-info");
-        info.innerHTML = `${t.title} <br> Due: ${t.due_date || "N/A"} • Importance: ${t.importance} • Hours: ${t.estimated_hours}`;
-
-        const actions = document.createElement("div");
-        actions.classList.add("form-task-actions");
+        card.innerHTML = `
+            <div class="form-task-info">
+                ${t.title}<br>
+                Due: ${t.due_date} • Importance: ${t.importance} • Hours: ${t.estimated_hours}
+            </div>
+        `;
 
         const del = document.createElement("button");
-        del.classList.add("form-delete-btn");
         del.textContent = "Delete";
         del.onclick = () => {
             formTasks = formTasks.filter(x => x.temp_id !== t.temp_id);
             renderFormTasks();
         };
 
-        actions.appendChild(del);
-        card.appendChild(info);
-        card.appendChild(actions);
+        card.appendChild(del);
         container.appendChild(card);
     });
 }
 
 function mockAnalyze(tasks, strategy) {
-    return tasks.map(t => {
-        let base = (t.importance || 5) * 10;
-        let quick = t.estimated_hours <= 2 ? 15 : 0;
-        let deadlineBoost = strategy === "deadline" ? 20 : 0;
-        let impactBoost = strategy === "impact" ? 25 : 0;
-        let fastBoost = strategy === "fastest" ? (t.estimated_hours <= 2 ? 40 : 0) : 0;
-
-        const score = base + quick + deadlineBoost + impactBoost + fastBoost;
-
-        return {
-            ...t,
-            score: score,
-            explanation: "Mock scoring applied (backend not running)"
-        };
-    }).sort((a, b) => b.score - a.score);
+    return tasks.map(t => ({
+        ...t,
+        priority_score: (t.importance || 5) * 10,
+        score_explanation: "Offline mock scoring"
+    }));
 }
