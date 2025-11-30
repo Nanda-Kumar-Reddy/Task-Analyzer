@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Task Analyzer</title>
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <header>
+        <h1>Smart Task Analyzer</h1>
+        <p class="subtitle">Prioritize your tasks intelligently</p>
+    </header>
+
+    <main class="container">
+
+        <section class="input-panel">
+            <h2>Enter Tasks (JSON Format)</h2>
+
+            <textarea id="taskInput" placeholder='[
+    {
+        "id": 1,
+        "title": "Finish report",
+        "due_date": "2025-12-01",
+        "estimated_hours": 3,
+        "importance": 8,
+        "dependencies": [2]
+    }
+]' spellcheck="false"></textarea>
+
+            <label for="strategy">Choose Strategy:</label>
+            <select id="strategy">
+                <option value="smart">Smart Balance</option>
+                <option value="deadline">Deadline Driven</option>
+                <option value="fastest">Fastest Wins</option>
+                <option value="impact">High Impact</option>
+            </select>
+
+            <button id="analyzeBtn" onclick="analyzeTasks()">Analyze</button>
+        </section>
+
+        <section class="results-panel">
+            <h2>Results</h2>
+            <div id="results"></div>
+        </section>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
