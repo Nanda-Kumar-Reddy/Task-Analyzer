@@ -1,0 +1,145 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: #f4f4f7;
+    padding: 20px;
+}
+
+
+header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+header h1 {
+    font-size: 32px;
+    color: #222;
+    font-weight: 700;
+}
+
+.subtitle {
+    margin-top: 5px;
+    font-size: 16px;
+    color: #555;
+}
+
+
+.container {
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+
+.input-panel,
+.results-panel {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 48%;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.07);
+}
+
+.input-panel h2,
+.results-panel h2 {
+    margin-bottom: 15px;
+    color: #222;
+}
+
+
+#taskInput {
+    width: 100%;
+    height: 260px;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    resize: vertical;
+    margin-bottom: 15px;
+    background: #fafafa;
+}
+
+
+#strategy {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #aaa;
+    margin-bottom: 15px;
+}
+
+
+#analyzeBtn {
+    width: 100%;
+    padding: 12px;
+    background: #2b79ff;
+    color: white;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: 0.2s;
+}
+
+#analyzeBtn:hover {
+    background: #1d5ed8;
+}
+
+
+#results {
+    margin-top: 10px;
+}
+
+
+.task-card {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    background: #fff;
+    border-left: 6px solid #ddd;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
+}
+
+.task-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+
+.priority-high {
+    border-left-color: #ff4d4d !important;
+}
+
+.priority-medium {
+    border-left-color: #ffa500 !important;
+}
+
+.priority-low {
+    border-left-color: #4caf50 !important;
+}
+
+
+.task-details {
+    font-size: 14px;
+    color: #444;
+    margin-top: 8px;
+}
+
+
+@media (max-width: 900px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .input-panel,
+    .results-panel {
+        width: 100%;
+    }
+}
