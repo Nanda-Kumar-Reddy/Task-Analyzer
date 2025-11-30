@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from .models import Task
+
 
 class TaskInputSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
@@ -12,9 +14,11 @@ class TaskInputSerializer(serializers.Serializer):
         default=list
     )
 
+
 class StrategySerializer(serializers.Serializer):
     strategy = serializers.CharField()
     tasks = TaskInputSerializer(many=True)
+
 
 class TaskOutputSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
@@ -25,3 +29,9 @@ class TaskOutputSerializer(serializers.Serializer):
     dependencies = serializers.ListField(child=serializers.IntegerField())
     score = serializers.FloatField()
     explanation = serializers.CharField()
+
+
+class TaskModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = "__all__"
