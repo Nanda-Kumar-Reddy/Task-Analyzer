@@ -368,3 +368,32 @@ header h1 {
         width: 100%;
     }
 }
+
+.reason-toggle-btn {
+    margin-top: 10px;
+    background: #004085;
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+}
+
+.reason-toggle-btn:hover {
+    background: #002f5c;
+}
+
+.reason-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f1f5ff;
+    border-left: 4px solid #004085;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.reason-row {
+    margin-bottom: 6px;
+}
