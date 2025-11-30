@@ -397,3 +397,20 @@ header h1 {
 .reason-row {
     margin-bottom: 6px;
 }
+
+
+.small-delete-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.small-delete-btn:hover {
+    background: #b52a37;
+    transform: scale(1.05);
+}

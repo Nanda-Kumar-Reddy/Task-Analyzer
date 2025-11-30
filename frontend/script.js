@@ -287,7 +287,8 @@ function addFormTask() {
 
     if (!title) return alert("Title is required.");
     if (!due_date) return alert("Due date required.");
-
+    if (importance < 1 || importance > 10) return alert("Importance must be 1-10.");
+    if (estimated_hours < 1) return alert("Estimated hours must be at least 1.");
     const temp_id = Date.now();
     formTasks.push({ temp_id, title, due_date, estimated_hours, importance, dependencies });
 
@@ -315,6 +316,7 @@ function renderFormTasks() {
         `;
 
         const del = document.createElement("button");
+        del.classList.add("small-delete-btn");
         del.textContent = "Delete";
         del.onclick = () => {
             formTasks = formTasks.filter(x => x.temp_id !== t.temp_id);
