@@ -24,7 +24,8 @@ class AnalyzeTasksView(APIView):
                 "explanation": score_data["explanation"]
             })
 
-        results.sort(key=lambda x: x["score"], reverse=True)
+        results.sort(key=lambda x: (x["score"], x["importance"]), reverse=True)
+
         output = TaskOutputSerializer(results, many=True)
         return Response(output.data, status=status.HTTP_200_OK)
 
@@ -47,7 +48,8 @@ class SuggestTasksView(APIView):
                 "explanation": score_data["explanation"]
             })
 
-        results.sort(key=lambda x: x["score"], reverse=True)
+        results.sort(key=lambda x: (x["score"], x["importance"]), reverse=True)
+
         top_three = results[:3]
         output = TaskOutputSerializer(top_three, many=True)
         return Response(output.data, status=status.HTTP_200_OK)
