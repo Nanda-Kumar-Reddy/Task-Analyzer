@@ -1,18 +1,20 @@
 from django.urls import path
 from .views import (
-    AnalyzeTasksView,
-    SuggestTasksView,
-    SaveTasksView,
-    AllTasksView,
-    TodayTasksView,
-    DeleteTaskView,
+    analyze_tasks,
+    suggest_top_tasks,
+    save_tasks,
+    get_all_tasks,
+    get_today_top_tasks,
+    delete_task
 )
 
 urlpatterns = [
-    path("analyze/", AnalyzeTasksView.as_view()),
-    path("suggest/", SuggestTasksView.as_view()),
-    path("save/", SaveTasksView.as_view()),
-    path("all/", AllTasksView.as_view()),
-    path("today/", TodayTasksView.as_view()),
-    path("delete/<int:id>/", DeleteTaskView.as_view()),
+    path("analyze/", analyze_tasks, name="analyze_tasks"),
+    path("suggest/", suggest_top_tasks, name="suggest_top_tasks"),
+
+    path("save/", save_tasks, name="save_tasks"),
+    path("all/", get_all_tasks, name="get_all_tasks"),
+    path("today/", get_today_top_tasks, name="get_today_top_tasks"),
+
+    path("delete/<int:task_id>/", delete_task, name="delete_task"),
 ]
